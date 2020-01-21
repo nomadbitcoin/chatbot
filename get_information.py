@@ -63,7 +63,7 @@ class get_Data():
             else:
                 return True
         except Exception as error:
-            do = verifyError('self.verifyConnection', error, getNow())
+            do = verifyError('self.verifyConnection', error, self.getNow())
 
 
     # In[7]:
@@ -92,7 +92,7 @@ class get_Data():
             assert contact_name != '', 'Algum erro ou Sem Nome de Contato'
             return contact_name
         except Exception as error:
-            do = verifyError('self.getChatName', error, getNow())
+            do = verifyError('self.getChatName', error, self.getNow())
             
     def getLabel(self, chat):
         '''
@@ -105,7 +105,7 @@ class get_Data():
             label = label.find('path').get('fill') if label != None else None
             return label
         except Exception as error:
-            do = verifyError('self.getLabel', error, getNow())
+            do = verifyError('self.getLabel', error, self.getNow())
             pass
 
     def isGroup(self, chat):
@@ -118,7 +118,7 @@ class get_Data():
             div_contact = chat.find('span',{'class':'_3NWy8'})
             return True if div_contact == None else False
         except Exception as error:
-            do = verifyError('isGroup', error, getNow())
+            do = verifyError('isGroup', error, self.getNow())
             pass
 
 
@@ -143,7 +143,7 @@ class get_Data():
             else:
                 return 'content need to be chat or message'
         except Exception as error:
-            do = verifyError('getTime', error, getNow())
+            do = verifyError('getTime', error, self.getNow())
             pass
 
     def getMsgStatus(self, content, chat_or_message):
@@ -159,7 +159,7 @@ class get_Data():
             elif chat_or_message == 'message':
                 return 'need implementation'
         except Exception as error:
-            do = verifyError('getMsgStatus', error, getNow())
+            do = verifyError('getMsgStatus', error, self.getNow())
             pass
 
     def slc_get_name(self):
@@ -170,15 +170,56 @@ class get_Data():
             name = self.driver.find_element_by_xpath("//div[@class='_19vo_']").text
             return name
         except Exception as error:
-            print(type(error), error)        
+            do = verifyError('slc_get_name', error, self.getNow())       
             return 'None'
 
+    def slc_get_messages(self):
+        '''
+            Pega o historico de mensagens que esta carregada no documento
+        '''
+        self.getPageSource()
+        try:
+            messages = self.htmlPage.find_all('div',{'class':'FTBzM'})
+            assert messages != [], 'Not Chat Selected'
+            return messages
+        except Exception as error:
+            do = verifyError('slc_get_messages', error, self.getNow())
 
+    def msg_type_content(self, message):
+        '''
+            Recebe uma mensagem e verifica qual o formato do conteudo: 
+                *texto, audio, imagem, video, link, documento, localizacao ou contato
+        '''
+        try:
+            if message.find('span',{'data-icon':'audio-play'}) != None:
+                msg_type = 'audio'
+            elif message.find('div',{'class':'_1o0MN'}) != None: #testar para outros tipos de documentos
+                msg_type = 'document'
+            elif message.find('span',{'data-icon':'msg-video-light'}) != None:
+                msg_type = 'video'
+            elif message.find('div',{'class':'_2kIVZ'}):
+                msg_type = 'contact'
+            elif message.find('a') != None and 'maps.google' in message.find('a').get('href'):
+                msg_type = 'location'
+            elif message.find('img',{'class':'_1NZVj'}) != None and 'maps.googleapis' in message.find('img',{'class':'_1NZVj'}).get('src'):
+                msg_type = 'live location'
+            elif message.find('a') != None:
+                msg_type = 'link'
+            elif message.find('img') != None and message.find('img').get('alt') != None:
+                msg_type = 'emoji'  #se for emoji possui o atributo ~alt~ dentro da tag img
+            elif message.find('img') != None:
+                msg_type = 'image'
+            else:
+                msg_type = 'text'
+            return msg_type
+        except Exception as error:
+            do = verifyError('slc_get_name', error, self.getNow())
+            return 'Desconhecido'
 
 # FUNCAO DE VERIFICACAO DE ERROS
 def verifyError(where, error, when):
     '''
         Verificacao de erros e excecoes 
     '''
+    print('Error ocurred in {} at {}: {} {}'.format(where, when, type(error), error))
     pass
-#     print('Error ocurred in {} at {}: {} {}'.format(where, when, type(error), error))
