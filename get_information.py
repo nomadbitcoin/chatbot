@@ -147,20 +147,34 @@ class get_Data():
             pass
 
     def getMsgStatus(self, content, chat_or_message):
-        '''
-            Recebe uma mensagem de chat ou do historico e retorna seu status,
-            se for mensagem enviada ira retornar se foi somente enviada, entregue ou recebida,
-            se for recebida ira retornar "received"
-        '''
-        try:
-            if chat_or_message == 'chat':
-                status_label = content.find('div',{'class':'_3VIru'})
-                return 'Received' if status_label == None else 'Sent'
-            elif chat_or_message == 'message':
-                return 'need implementation'
-        except Exception as error:
-            do = verifyError('getMsgStatus', error, self.getNow())
-            pass
+            '''
+                Recebe uma mensagem de chat ou do historico e retorna seu status,
+                se for mensagem enviada ira retornar se foi somente enviada, entregue ou recebida,
+                se for recebida ira retornar "received"
+            '''
+            try:
+                if chat_or_message == 'chat':
+                    status_label = content.find('div',{'class':'_3VIru'})
+                    return 'Received' if status_label == None else 'Sent'
+                elif chat_or_message == 'message':
+                    # se a mensagem tiver sido apenas enviada
+                    if content.find('span',{'data-icon':'msg-check'}) != None:
+                        status = 'Sent'
+                    # se a mensagem tiver sido entregue
+                    elif content.find('span',{'data-icon':'msg-dblcheck'}) != None:
+                        status = 'Delivered'
+                    # se a mensagem tiver sido vizualizada
+                    elif content.find('span',{'data-icon':'msg-dblcheck-ack'}) != None:
+                        status = 'Viewed'
+                    # se nao for nenhuma das anteriores eh mensagem recebida
+                    else:
+                        status = 'Received'
+                        
+                    return status
+            except Exception as error:
+                do = verifyError('getMsgStatus', error, self.getNow())
+                pass
+
 
     def slc_get_name(self):
         '''
@@ -205,16 +219,54 @@ class get_Data():
                 msg_type = 'live location'
             elif message.find('a') != None:
                 msg_type = 'link'
-            elif message.find('img') != None and message.find('img').get('alt') != None:
-                msg_type = 'emoji'  #se for emoji possui o atributo ~alt~ dentro da tag img
+            elif message.find('img') != None and message.find('img').get('alt') != None: #se for emoji possui o atributo ~alt~ dentro da tag img
+            	#verifica se eh apenas emoji ou emoji com texto
+                if len(message.text.split(' ')) <= 2:
+                    msg_type = 'emoji' 
+                else:
+                    msg_type = 'text_and_emoji'
             elif message.find('img') != None:
                 msg_type = 'image'
             else:
                 msg_type = 'text'
             return msg_type
         except Exception as error:
-            do = verifyError('slc_get_name', error, self.getNow())
+            do = verifyError('msg_type_content', error, self.getNow())
             return 'Desconhecido'
+    
+    def slc_get_msg_content(self, message):
+        '''
+            Recebe uma mensagem e seu tipo
+            baseado no tipo da mensagem ira devolver seu conteudo
+        '''
+        msg_type = self.msg_type_content(message)
+        #se for imagem ira retornar o link para a imagem
+        if msg_type == 'image':
+            content = message.find('img').get('src')
+        # se for audio ira retornar o link para o audio
+        elif msg_type == 'audio':
+            content = message.find('audio').get('src')
+        # se for emoji, ira retornar link para o emoji
+        elif msg_type == 'emoji':
+            content = message.find('img').get('src')
+        # se for texto ira retornar o conteudo do texto subtraído o horario que esta no final
+        elif msg_type == 'text' or msg_type == 'text_and_emoji':
+            content = message.text[:-7]
+        else:
+            content = 'other'    
+        return content
+
+    def slc_get_last_msg(self):
+        '''
+            Pega a ultima mensagem do historico, o tipo do conteudo, horario e status
+        '''
+        messages = self.slc_get_messages()
+        msg_time = self.getTime(messages[-1], 'message')
+        msg_type = self.msg_type_content(messages[-1])
+        msg_status = self.getMsgStatus(messages[-1], 'message')
+        msg_content = self.slc_get_msg_content(messages[-1])
+        
+        return {'time': msg_time, 'status': msg_status, 'content':msg_content, 'msg_type': msg_type}
 
 # FUNCAO DE VERIFICACAO DE ERROS
 def verifyError(where, error, when):
